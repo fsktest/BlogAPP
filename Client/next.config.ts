@@ -17,7 +17,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'export', // ✅ This is what enables static HTML export!
 };
 
 export default nextConfig;
