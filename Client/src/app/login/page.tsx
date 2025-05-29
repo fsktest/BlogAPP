@@ -27,9 +27,9 @@ export default function LoginPage() {
 
   const handleLogin = async (values: LoginFormValues) => {
     try {
-      // Add additional logging to debug the issue
       console.log("Attempting to log in with email:", values.email);
 
+      // Try the login function
       const success = await login(values.email, values.password);
 
       if (success) {
@@ -56,6 +56,16 @@ export default function LoginPage() {
       if (error instanceof TypeError && error.message === "Failed to fetch") {
         errorMessage =
           "Unable to connect to the server. Please check if the server is running and try again.";
+      } else if (
+        error instanceof SyntaxError &&
+        error.message.includes("Unexpected token")
+      ) {
+        // Handle JSON parse error
+        errorMessage =
+          "The server returned an invalid response. This could be due to server issues or incorrect API configuration.";
+        console.error(
+          "Invalid response format. The server might be returning HTML instead of JSON."
+        );
       }
 
       toast({

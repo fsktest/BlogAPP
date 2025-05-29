@@ -1,7 +1,7 @@
 import type { Post, PostFormData } from "./types";
 import { cookies } from "next/headers";
 
-const API_BASE_URL = "http://localhost:5555";
+const API_BASE_URL = process.env.NEXT_PROD_API_URL || "";
 
 export function getAuthToken(): string | null {
   // Server environment
@@ -27,61 +27,61 @@ export function getAuthToken(): string | null {
   }
 }
 
-export async function getServerPosts() {
-  try {
-    // Get token from server-side cookies
-    let token = null;
-    try {
-      const cookieStore = cookies();
-      token = cookieStore.get("midnight-musings-token")?.value || null;
-    } catch (e) {
-      console.error("Could not access cookies on server:", e);
-    }
+// export async function getServerPosts() {
+//   try {
+//     // Get token from server-side cookies
+//     let token = null;
+//     try {
+//       const cookieStore = cookies();
+//       token = cookieStore.get("midnight-musings-token")?.value || null;
+//     } catch (e) {
+//       console.error("Could not access cookies on server:", e);
+//     }
 
-    // Create headers
-    const headers: HeadersInit = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+//     // Create headers
+//     const headers: HeadersInit = {};
+//     if (token) {
+//       headers["Authorization"] = `Bearer ${token}`;
+//     }
 
-    // Use absolute URL for server components
-    const API_BASE_URL =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5555";
+//     // Use absolute URL for server components
+//     const API_BASE_URL =
+//       process.env.NEXT_PROD_API_URL || "https://blogapp-62q1.onrender.com";
 
-    // Make the request
-    const response = await fetch(`${API_BASE_URL}/allpost`, {
-      headers,
-      cache: "no-store",
-    });
+//     // Make the request
+//     const response = await fetch(`${API_BASE_URL}/allpost`, {
+//       headers,
+//       cache: "no-store",
+//     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch posts: ${response.status}`);
-    }
+//     if (!response.ok) {
+//       throw new Error(`Failed to fetch posts: ${response.status}`);
+//     }
 
-    const data = await response.json();
-    const posts = data.allPost || [];
+//     const data = await response.json();
+//     const posts = data.allPost || [];
 
-    return posts.map((post: any) => ({
-      id: post._id,
-      title: post.title || "Untitled",
-      content: post.content || "",
-      summary: post.summary || post.content?.substring(0, 150) || "",
-      authorId:
-        typeof post.author === "object" ? post.author?._id : post.author,
-      authorName:
-        typeof post.author === "object" ? post.author?.name : "Unknown Author",
-      tags: post.tags || [],
-      likes: post.likes || [],
-      bookmarks: post.bookmarks || [],
-      comments: post.comments || [],
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-    }));
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    return [];
-  }
-}
+//     return posts.map((post: any) => ({
+//       id: post._id,
+//       title: post.title || "Untitled",
+//       content: post.content || "",
+//       summary: post.summary || post.content?.substring(0, 150) || "",
+//       authorId:
+//         typeof post.author === "object" ? post.author?._id : post.author,
+//       authorName:
+//         typeof post.author === "object" ? post.author?.name : "Unknown Author",
+//       tags: post.tags || [],
+//       likes: post.likes || [],
+//       bookmarks: post.bookmarks || [],
+//       comments: post.comments || [],
+//       createdAt: post.createdAt,
+//       updatedAt: post.updatedAt,
+//     }));
+//   } catch (error) {
+//     console.error("Error fetching posts:", error);
+//     return [];
+//   }
+// }
 
 // Fetch all posts
 // export async function fetchPosts(): Promise<Post[]> {
@@ -135,6 +135,53 @@ export async function getServerPosts() {
 //     return [];
 //   }
 // }
+
+// Update the function to be async and properly await cookies()
+export async function getServerPosts() {
+  let token = null;
+  
+  // Server-side: Get token from cookies
+  if (typeof window === 'undefined') {
+    try {
+      const cookieStore = cookies();
+      // Make sure to await cookies() before using get()
+      token = (await cookieStore).get("midnight-musings-token")?.value || null;
+    } catch (e) {
+      console.error("Could not access cookies on server:", e);
+    }
+  }
+  // Client-side: Get token from localStorage
+  else {
+    token = localStorage.getItem("midnight-musings-token") || null;
+  }
+
+  try {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://blogapp-62q1.onrender.com";
+    
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+    
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/allpost`, {
+      headers,
+      cache: 'no-store', // Ensure we get fresh data each time
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching posts: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.allPost || [];
+  } catch (error) {
+    console.error("Failed to fetch posts:", error);
+    return [];
+  }
+}
 
 export async function fetchPosts(): Promise<Post[]> {
   try {

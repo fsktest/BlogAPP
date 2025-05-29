@@ -7,14 +7,19 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useCookies } from "react-cookie";
 
 // API base URL
-const API_BASE_URL = "http://localhost:5555";
+const API_BASE_URL = process.env.NEXT_PROD_API_URL || "https://blogapp-62q1.onrender.com";
 const TOKEN_COOKIE_NAME = "midnight-musings-token";
 
 type AuthContextType = {
   user: User | null;
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, pass: string, role?: string) => Promise<boolean>;
+  register: (
+    name: string,
+    email: string,
+    pass: string,
+    role?: string
+  ) => Promise<boolean>;
   loading: boolean;
   token: string | null;
   setUser: (user: User | null) => void; // Add this explicit type
@@ -39,17 +44,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initAuth = async () => {
       // Try to get token from cookies first (works in both client and SSR)
       let authToken = cookies[TOKEN_COOKIE_NAME];
-      
+
       // If not in cookies, try localStorage as fallback (client-side only)
-      if (!authToken && typeof window !== 'undefined') {
+      if (!authToken && typeof window !== "undefined") {
         authToken = localStorage.getItem(TOKEN_COOKIE_NAME);
-        
+
         // If found in localStorage but not in cookies, sync them
         if (authToken) {
-          setCookie(TOKEN_COOKIE_NAME, authToken, { path: '/', sameSite: 'strict' });
+          setCookie(TOKEN_COOKIE_NAME, authToken, {
+            path: "/",
+            sameSite: "strict",
+          });
         }
       }
-      
+
       if (authToken) {
         setToken(authToken);
         await fetchCurrentUser(authToken);
@@ -57,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     };
-    
+
     initAuth();
   }, []);
 
@@ -76,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: data.user.name,
           email: data.user.email,
           role: data.user.role,
-          bio: data.user.bio || '',
+          bio: data.user.bio || "",
         });
       } else {
         // Token might be expired or invalid
@@ -92,63 +100,114 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Helper to clear auth state from both cookies and localStorage
   const clearAuthState = () => {
-    removeCookie(TOKEN_COOKIE_NAME, { path: '/' });
-    if (typeof window !== 'undefined') {
+    removeCookie(TOKEN_COOKIE_NAME, { path: "/" });
+    if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_COOKIE_NAME);
     }
     setToken(null);
     setUserState(null);
   };
 
+  // const login = async (email: string, password: string): Promise<boolean> => {
+  //   setLoading(true);
+  //   try {
+  //     const controller = new AbortController();
+  //     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+  //     const response = await fetch(`${API_BASE_URL}/login`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ email, password }),
+  //       signal: controller.signal,
+  //     });
+
+  //     clearTimeout(timeoutId);
+
+  //     const data = await response.json();
+
+  //     if (response.ok) {
+  //       console.error(`Login failed with status: ${response.status}`);
+  //       const userData = {
+  //         id: data.user._id,
+  //         name: data.user.name,
+  //         email: data.user.email,
+  //         role: data.user.role || "user",
+  //         bio: data.user.bio || '',
+  //       };
+
+  //       setUserState(userData);
+  //       setToken(data.token);
+
+  //       // Store token in both localStorage and cookies
+  //       if (typeof window !== 'undefined') {
+  //         localStorage.setItem(TOKEN_COOKIE_NAME, data.token);
+  //       }
+  //       setCookie(TOKEN_COOKIE_NAME, data.token, { path: '/', sameSite: 'strict' });
+
+  //       return true;
+  //     } else {
+  //       console.error("Login failed:", data.message);
+  //       return false;
+  //     }
+  //   } catch (error: any) {
+  //     if (error.name === "AbortError") {
+  //       console.error("Login request timed out");
+  //     } else {
+  //       console.error("Login error:", error);
+  //     }
+  //     return false;
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // Inside your AuthProvider component
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
       const response = await fetch(`${API_BASE_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
-        signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
+      // Check if response is OK before trying to parse JSON
+      if (!response.ok) {
+        console.error(`Login failed with status: ${response.status}`);
+
+        // Try to get error message if possible
+        try {
+          const errorData = await response.json();
+          console.error("Error details:", errorData);
+        } catch (e) {
+          // If can't parse as JSON, log the text
+          const textResponse = await response.text();
+          console.error(
+            "Response was not JSON:",
+            textResponse.substring(0, 200) + "..."
+          );
+        }
+
+        return false;
+      }
 
       const data = await response.json();
 
-      if (response.ok) {
-        const userData = {
-          id: data.user._id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role || "user",
-          bio: data.user.bio || '',
-        };
-
-        setUserState(userData);
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        setUser(data.user);
         setToken(data.token);
-        
-        // Store token in both localStorage and cookies
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(TOKEN_COOKIE_NAME, data.token);
-        }
-        setCookie(TOKEN_COOKIE_NAME, data.token, { path: '/', sameSite: 'strict' });
-        
         return true;
-      } else {
-        console.error("Login failed:", data.message);
-        return false;
-      }
-    } catch (error: any) {
-      if (error.name === "AbortError") {
-        console.error("Login request timed out");
-      } else {
-        console.error("Login error:", error);
       }
       return false;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error; // Re-throw for component-level handling
     } finally {
       setLoading(false);
     }
@@ -157,13 +216,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUserState(null);
     setToken(null);
-    
+
     // Clear from both localStorage and cookies
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_COOKIE_NAME);
     }
-    removeCookie(TOKEN_COOKIE_NAME, { path: '/' });
-    
+    removeCookie(TOKEN_COOKIE_NAME, { path: "/" });
+
     router.push("/login");
   };
 
@@ -191,18 +250,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: data.user.name,
           email: data.user.email,
           role: data.user.role || "User",
-          bio: data.user.bio || '',
+          bio: data.user.bio || "",
         };
 
         setUserState(userData);
         setToken(data.token);
-        
+
         // Store token in both localStorage and cookies
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           localStorage.setItem(TOKEN_COOKIE_NAME, data.token);
         }
-        setCookie(TOKEN_COOKIE_NAME, data.token, { path: '/', sameSite: 'strict' });
-        
+        setCookie(TOKEN_COOKIE_NAME, data.token, {
+          path: "/",
+          sameSite: "strict",
+        });
+
         return true;
       } else {
         console.error("Registration failed:", data.message);

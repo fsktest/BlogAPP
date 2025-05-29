@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE_URL = "http://localhost:5555"; // Adjust based on your API URL
+const API_BASE_URL = "https://blogapp-62q1.onrender.com"; // Adjust based on your API URL
 
 type BlogPostCardProps = {
   post: Post;

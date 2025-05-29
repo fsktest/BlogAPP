@@ -51,7 +51,8 @@ import {
 } from "lucide-react";
 
 // API base URL
-const API_BASE_URL = "http://localhost:5555";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://blogapp-62q1.onrender.com";
 
 type Comment = {
   _id: string;

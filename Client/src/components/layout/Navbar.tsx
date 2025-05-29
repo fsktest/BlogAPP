@@ -38,7 +38,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <Button variant={pathname === "/" ? "secondary" : "ghost"} asChild>
             <Link href="/">
-              <BookOpenText className="mr-2 h-4 w-4" /> Posts
+              <BookOpenText className="mr-2 h-4 w-4" />Refresh Posts
             </Link>
           </Button>
           {loading ? (

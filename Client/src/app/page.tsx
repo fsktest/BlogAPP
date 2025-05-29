@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import MainLayout from "@/components/layout/MainLayout";
 import PostCardServer from "@/components/PostCardServer";
 import { getServerPosts } from "@/lib/actions";

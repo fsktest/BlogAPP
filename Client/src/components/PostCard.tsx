@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-const API_BASE_URL = "http://localhost:5555";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://blogapp-62q1.onrender.com";
 
 interface PostCardProps {
   post: Post;
@@ -37,6 +37,8 @@ interface PostCardProps {
 export default function PostCard({ post, refreshPosts }: PostCardProps) {
   const { toast } = useToast();
   const { user, token } = useAuth();
+
+  // console.log("Rendering PostCard for post:", post);
 
   // States for like and bookmark
   const [isLiked, setIsLiked] = useState(
@@ -67,7 +69,7 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
     try {
       const endpoint = isLiked ? "unlike-post" : "like-post";
 
-      const response = await fetch(`${API_BASE_URL}/${endpoint}/${post.id}`, {
+      const response = await fetch(`${API_BASE_URL}/${endpoint}/${post._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,6 +84,8 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
       }
 
       const data = await response.json();
+
+      console.log("Like response data:", data);
 
       // Update UI state
       setIsLiked(!isLiked);
@@ -130,7 +134,7 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
     try {
       const endpoint = isBookmarked ? "unbookmark-post" : "bookmark-post";
 
-      const response = await fetch(`${API_BASE_URL}/${endpoint}/${post.id}`, {
+      const response = await fetch(`${API_BASE_URL}/${endpoint}/${post._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -184,12 +188,12 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
         await navigator.share({
           title: post.title,
           text: post.summary || post.content.substring(0, 100),
-          url: `${window.location.origin}/posts/${post.id}`,
+          url: `${window.location.origin}/posts/${post._id}`,
         });
       } else {
         // Fallback for browsers that don't support navigator.share
         await navigator.clipboard.writeText(
-          `${window.location.origin}/posts/${post.id}`
+          `${window.location.origin}/posts/${post._id}`
         );
         toast({
           title: "Link copied",
@@ -212,7 +216,7 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
       <CardHeader>
         <div className="flex justify-between items-start mb-2">
           <CardTitle className="text-xl hover:text-primary transition-colors">
-            <Link href={`/posts/${post.id}`}>{post.title}</Link>
+            <Link href={`/posts/${post._id}`}>{post.title}</Link>
           </CardTitle>
 
           {/* Bookmark button - positioned at the top right */}
@@ -241,7 +245,7 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
 
         <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <span className="flex items-center gap-1">
-            <UserCircle size={16} /> {post.authorName || "Unknown Author"}
+            <UserCircle size={16} /> {post.author.name || "Unknown Author"}
           </span>
           <span className="flex items-center gap-1">
             <CalendarDays size={16} /> {formatDate(post.createdAt)}
@@ -317,7 +321,7 @@ export default function PostCard({ post, refreshPosts }: PostCardProps) {
           variant="link"
           className="p-0 h-auto"
         >
-          <Link href={`/posts/${post.id}`}>Read More →</Link>
+          <Link href={`/posts/${post._id}`}>Read More →</Link>
         </Button>
       </CardFooter>
     </Card>

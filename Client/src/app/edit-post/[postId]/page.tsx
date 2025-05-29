@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 
 // API base URL
-const API_BASE_URL = "http://localhost:5555";
+const API_BASE_URL = "https://blogapp-62q1.onrender.com";
 
 type PostFormData = {
   title: string;
