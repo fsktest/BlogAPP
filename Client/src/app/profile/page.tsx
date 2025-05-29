@@ -112,6 +112,7 @@ export default function ProfilePage() {
   const [bookmarkPosts, setBookmarkPosts] = useState<Post[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [taggedPosts, setTaggedPosts] = useState<Post[]>([]);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Profile form
   const form = useForm<ProfileFormValues>({
@@ -136,30 +137,62 @@ export default function ProfilePage() {
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!user) {
-      router.push("/login");
-    } else {
-      // Initialize form with user data when available
-      form.reset({
-        name: user.name || "",
-        email: user.email || "",
-        bio: user.bio || "",
-        role: (user.role as "User" | "Admin") || "User",
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
+    const initializeProfile = async () => {
+      if (!user) {
+        // If not logged in, redirect to login
+        router.push("/login");
+        return;
+      }
 
-      // Fetch user's posts
-      fetchUserPosts();
-      fetchBookmarks();
-    }
-  }, [user, router, form]);
+      setProfileLoading(true);
+
+      try {
+        // Make sure we have a valid user ID before proceeding
+        if (!user.id) {
+          console.error("User ID is undefined in profile page");
+          toast({
+            title: "Error",
+            description:
+              "Could not load user data. Please try logging in again.",
+            variant: "destructive",
+          });
+          logout(); // Force logout if user ID is undefined
+          router.push("/login");
+          return;
+        }
+
+        // Log the actual user object to debug
+        console.log("User object in profile:", user);
+
+        // Initialize form with user data
+        form.reset({
+          name: user.name || "",
+          email: user.email || "",
+          bio: user.bio || "",
+          role: (user.role as "User" | "Admin") || "User",
+        });
+
+        // Now fetch user posts and bookmarks
+        await Promise.all([fetchUserPosts(), fetchBookmarks()]);
+      } catch (error) {
+        console.error("Error initializing profile:", error);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    initializeProfile();
+  }, [user, router, form, logout]);
 
   const fetchUserPosts = async () => {
-    if (!token || !user) return;
+    if (!token || !user?.id) {
+      console.log("Cannot fetch posts: Missing token or user ID");
+      setPostsLoading(false);
+      return;
+    }
 
     try {
+      console.log("Fetching posts for user ID:", user.id);
       const response = await fetch(`${API_BASE_URL}/getmypost/${user.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -170,7 +203,17 @@ export default function ProfilePage() {
         const data = await response.json();
         setUserPosts(data.posts || []);
       } else {
-        console.error("Failed to fetch user posts");
+        console.error(`Failed to fetch user posts: ${response.status}`);
+
+        // Try to get more error details
+        try {
+          const errorData = await response.json();
+          console.error("Error details:", errorData);
+        } catch (e) {
+          // If can't parse as JSON, log the text
+          const text = await response.text();
+          console.error("Error response:", text.substring(0, 200));
+        }
       }
     } catch (error) {
       console.error("Error fetching user posts:", error);
@@ -180,12 +223,21 @@ export default function ProfilePage() {
   };
 
   const fetchBookmarks = async () => {
-    // /bookmarked-posts/:userId
+    if (!user?.id) {
+      console.log("Cannot fetch bookmarks: Missing user ID");
+      setBookmarksLoading(false);
+      return;
+    }
+    
+
     try {
+      console.log("Fetching bookmarks for user ID:", user.id);
       const response = await fetch(
         `${API_BASE_URL}/bookmarked-posts/${user.id}`,
         {
-          headers: {},
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -194,7 +246,11 @@ export default function ProfilePage() {
         console.log("Fetched bookmarked posts:", data);
         setBookmarkPosts(data.posts || []);
       } else {
-        console.error("Failed to fetch bookmarked posts");
+        console.error(`Failed to fetch bookmarked posts: ${response.status}`);
+
+        // Try to get more error details
+        const errorText = await response.text();
+        console.error("Error response:", errorText.substring(0, 200));
       }
     } catch (error) {
       console.error("Error fetching bookmarked posts:", error);
@@ -336,7 +392,32 @@ export default function ProfilePage() {
       .slice(0, 2);
   };
 
-  if (!user) {
+  if (profileLoading) {
+    return (
+      <div className="container max-w-4xl mx-auto py-6 px-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-10">
+          <Skeleton className="w-24 h-24 md:w-32 md:h-32 rounded-full" />
+          <div className="flex-1">
+            <Skeleton className="h-8 w-48 mb-4" />
+            <div className="flex space-x-6 mb-4">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-16" />
+            </div>
+            <Skeleton className="h-4 w-full max-w-xs" />
+          </div>
+        </div>
+        <Skeleton className="h-14 w-full mb-6" />
+        <div className="grid grid-cols-3 gap-1">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !user.id) {
     return null; // Will redirect in useEffect
   }
 

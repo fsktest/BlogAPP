@@ -7,7 +7,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useCookies } from "react-cookie";
 
 // API base URL
-const API_BASE_URL = process.env.NEXT_PROD_API_URL || "https://blogapp-62q1.onrender.com";
+const API_BASE_URL =
+  process.env.NEXT_PROD_API_URL || "https://blogapp-62q1.onrender.com";
 const TOKEN_COOKIE_NAME = "midnight-musings-token";
 
 type AuthContextType = {
@@ -67,6 +68,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initAuth();
+  }, []);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      console.log("Initializing auth state");
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
+      console.log("Stored token exists:", !!storedToken);
+      console.log("Stored user exists:", !!storedUser);
+
+      if (storedToken && storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          console.log("Parsed user data:", userData);
+          console.log("User ID from storage:", userData.id);
+
+          setToken(storedToken);
+          setUser(userData);
+        } catch (error) {
+          console.error("Error parsing stored user:", error);
+        }
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const fetchCurrentUser = async (authToken: string) => {
@@ -198,10 +225,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = await response.json();
 
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        setUser(data.user);
+      // Make sure we're correctly storing the user ID
+      if (data.token && data.user) {
+        // Ensure we have the correct ID property
+        const userData = {
+          id: data.user._id || data.user.id,
+          name: data.user.name || "",
+          email: data.user.email || "",
+          bio: data.user.bio || "",
+          role: data.user.role || "User",
+        };
+
+        setUser(userData);
         setToken(data.token);
+
+        // Store in localStorage as well
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(userData));
+
         return true;
       }
       return false;
