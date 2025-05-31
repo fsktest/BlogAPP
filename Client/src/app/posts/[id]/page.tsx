@@ -110,6 +110,10 @@ export default function PostDetailPage() {
   const searchParams = useSearchParams();
   const cameFrom = searchParams.get("ref");
 
+
+  console.log("PPost AuthorID:", post);
+  console.log("PPost UserID:", user?.id);
+
   useEffect(() => {
     if (typeof document !== "undefined") {
       // Check if the previous page was the profile page
@@ -807,7 +811,13 @@ export default function PostDetailPage() {
   // router.push('/profile') if the previous page was profile
   // or handle back navigation
 
-  const isAuthor = user?.id === post.author;
+  const isAuthor = user?.id && (
+    // If author is a string, compare directly
+    (typeof post.author === 'string' && post.author === user.id) ||
+    // If author is an object, compare with _id or id
+    (typeof post.author === 'object' && post.author && 
+      (post.author._id === user.id || post.author.id === user.id))
+  );
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -847,12 +857,46 @@ export default function PostDetailPage() {
               </span>
             </div>
 
+            {/* Author-specific actions */}
             {isAuthor && (
-              <Link href={`/edit-post/${post._id}`}>
-                <Button variant="ghost" size="sm">
-                  Edit Post
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href={`/edit-post/${post._id}`}>
+                  <Button variant="outline" size="sm">
+                    Edit
+                  </Button>
+                </Link>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteInProgress}
+                    >
+                      {deleteInProgress ? "Deleting..." : "Delete"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Are you absolutely sure?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently
+                        delete your post and remove it from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </div>
 
@@ -1145,46 +1189,6 @@ export default function PostDetailPage() {
               Share
             </Button>
           </div>
-
-          {/* Delete Post Button - Only for author */}
-          {isAuthor && (
-            <>
-              <Separator className="my-2" />
-              <div className="w-full flex justify-end">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={deleteInProgress}
-                    >
-                      {deleteInProgress ? "Deleting..." : "Delete Post"}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Are you absolutely sure?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently
-                        delete your post and remove it from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </>
-          )}
         </CardFooter>
       </Card>
 

@@ -52,9 +52,10 @@ export default function EditPostPage() {
         }
 
         const data = await response.json();
+        console.log("Fetched post data:", data);
         
         // Check if user is the author
-        if (data.post.author !== user?.id) {
+        if (data.post.author._id !== user?.id) {
           toast({
             title: "Permission denied",
             description: "You can only edit your own posts",
@@ -89,43 +90,114 @@ export default function EditPostPage() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setSubmitting(true);
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/update-post/${postId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
+  //   try {
+  //     const response = await fetch(`${API_BASE_URL}/update-post/${postId}`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify(formData),
+  //     });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update post');
-      }
+  //     if (!response.ok) {
+  //       const data = await response.json();
+  //       throw new Error(data.message || 'Failed to update post');
+  //     }
 
-      toast({
-        title: "Success",
-        description: "Your post has been updated",
-        variant: "success",
-      });
+  //     toast({
+  //       title: "Success",
+  //       description: "Your post has been updated",
+  //       variant: "success",
+  //     });
       
-      router.push(`/posts/${postId}`);
-    } catch (err) {
-      console.error("Error updating post:", err);
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update post",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
+  //     router.push(`/posts/${postId}`);
+  //   } catch (err) {
+  //     console.error("Error updating post:", err);
+  //     toast({
+  //       title: "Error",
+  //       description: err instanceof Error ? err.message : "Failed to update post",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setSubmitting(false);
+  //   }
+  // };
+
+  // In your edit-post/[postId]/page.tsx component
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSubmitting(true);
+
+  try {
+    // Log everything for debugging
+    console.log("Sending update request:");
+    console.log("- Post ID:", postId);
+    console.log("- Token:", token ? "Token exists" : "No token");
+    console.log("- Form data:", formData);
+
+    // Make sure we're sending both title and content
+    if (!formData.title || !formData.content) {
+      throw new Error("Title and content are required");
     }
-  };
+
+    const response = await fetch(`${API_BASE_URL}/update-post/${postId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      // IMPORTANT: Send exactly what the API expects
+      body: JSON.stringify({
+        title: formData.title,
+        content: formData.content,
+        // Note: Don't send userId - the API extracts it from the token
+      }),
+    });
+
+    // Log response for debugging
+    console.log("Response status:", response.status);
+    
+    if (!response.ok) {
+      // Get error details for debugging
+      let errorText;
+      try {
+        const errorData = await response.json();
+        errorText = errorData.message;
+        console.error("Error response:", errorData);
+      } catch (e) {
+        errorText = await response.text();
+        console.error("Error response (text):", errorText);
+      }
+      
+      throw new Error(errorText || "Failed to update post");
+    }
+
+    const data = await response.json();
+    console.log("Success response:", data);
+
+    toast({
+      title: "Success",
+      description: "Your post has been updated",
+      variant: "success",
+    });
+    
+    router.push(`/posts/${postId}`);
+  } catch (err) {
+    console.error("Error updating post:", err);
+    toast({
+      title: "Error",
+      description: err instanceof Error ? err.message : "Failed to update post",
+      variant: "destructive",
+    });
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (loading) {
     return (
